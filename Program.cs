@@ -8,13 +8,14 @@ namespace HA_Agent
         /// <param name="config">Path to configuration file</param>
         /// <param name="verbose">Display more details about what's going on</param>
         /// <param name="once">Run data collection once only</param>
-        static void Main(FileInfo? config = null, bool verbose = false, bool once = false)
+        static async Task Main(FileInfo? config = null, bool verbose = false, bool once = false)
         {
             if (config == null) config = new FileInfo("config.json");
             var agent = new Agent(LoadConfiguration(config), verbose);
+            await agent.Start();
             if (once)
             {
-                agent.Execute();
+                await agent.Execute();
             }
             else
             {
@@ -22,7 +23,7 @@ namespace HA_Agent
                 while (true)
                 {
                     Thread.Sleep(60000 - (int)((DateTimeOffset.Now.ToUnixTimeMilliseconds() - offsetSecondsMs) % 60000));
-                    agent.Execute();
+                    await agent.Execute();
                 }
             }
         }
