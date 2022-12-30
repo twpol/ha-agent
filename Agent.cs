@@ -48,8 +48,8 @@ namespace HA_Agent
 
             await PublishSensor("sensor", "Last Reboot", icon: "mdi:restart", deviceClass: "timestamp", entityCategory: "diagnostic", state: GetLastReboot().ToString("s") + "Z");
             await PublishSensor("sensor", "Battery Level", icon: "mdi:battery-charging", deviceClass: "battery", unitOfMeasurement: "%", entityCategory: "diagnostic", state: GetBatteryLevel().ToString());
-            foreach (var data in GetMemoryData()) await PublishSensor("sensor", $"{data.Name} Memory Free", icon: "mdi:memory", stateClass: "measurement", unitOfMeasurement: "GB", entityCategory: "diagnostic", state: data.FreeGB.ToString("G3"));
-            foreach (var data in GetStorageData()) await PublishSensor("sensor", $"{data.Name} Storage Free", icon: "mdi:harddisk", stateClass: "measurement", unitOfMeasurement: "GB", entityCategory: "diagnostic", state: data.FreeGB.ToString("G3"));
+            foreach (var data in GetMemoryData()) await PublishSensor("sensor", $"{data.Name} Memory Free", icon: "mdi:memory", stateClass: "measurement", unitOfMeasurement: "MiB", entityCategory: "diagnostic", state: data.FreeMiB.ToString("G3"));
+            foreach (var data in GetStorageData()) await PublishSensor("sensor", $"{data.Name} Storage Free", icon: "mdi:harddisk", stateClass: "measurement", unitOfMeasurement: "GiB", entityCategory: "diagnostic", state: data.FreeGiB.ToString("G3"));
 
             VerboseLog("Execute: Finish");
         }
@@ -175,9 +175,9 @@ namespace HA_Agent
                 var collection = searcher.Get().GetEnumerator();
                 if (collection.MoveNext())
                 {
-                    list.Add(new NameValueData("Physical", (float)(ulong)collection.Current["FreePhysicalMemory"] / 1024 / 1024));
-                    list.Add(new NameValueData("Paging", (float)(ulong)collection.Current["FreeSpaceInPagingFiles"] / 1024 / 1024));
-                    list.Add(new NameValueData("Virtual", (float)(ulong)collection.Current["FreeVirtualMemory"] / 1024 / 1024));
+                    list.Add(new NameValueData("Physical", (ulong)collection.Current["FreePhysicalMemory"] * 1024));
+                    list.Add(new NameValueData("Paging", (ulong)collection.Current["FreeSpaceInPagingFiles"] * 1024));
+                    list.Add(new NameValueData("Virtual", (ulong)collection.Current["FreeVirtualMemory"] * 1024));
                 }
             }
             return list;
@@ -195,7 +195,7 @@ namespace HA_Agent
                 {
                     if (volume["DriveLetter"] != null && (uint)volume["DriveType"] == 3)
                     {
-                        list.Add(new NameValueData((string)volume["DriveLetter"], (float)(ulong)volume["FreeSpace"] / 1024 / 1024 / 1024));
+                        list.Add(new NameValueData((string)volume["DriveLetter"], (ulong)volume["FreeSpace"]));
                     }
                 }
             }
@@ -203,5 +203,9 @@ namespace HA_Agent
         }
     }
 
-    record NameValueData(string Name, float FreeGB);
+    record NameValueData(string Name, float FreeBytes)
+    {
+        public float FreeMiB => FreeBytes / 1024 / 1024;
+        public float FreeGiB => FreeBytes / 1024 / 1024 / 1024;
+    }
 }
