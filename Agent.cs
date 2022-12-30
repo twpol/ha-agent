@@ -50,8 +50,18 @@ namespace HA_Agent
 
             await PublishSensor("sensor", "Last Reboot", icon: "mdi:restart", deviceClass: "timestamp", entityCategory: "diagnostic", state: GetLastReboot().ToString("s") + "Z");
             await PublishSensor("sensor", "Battery Level", icon: "mdi:battery-charging", deviceClass: "battery", unitOfMeasurement: "%", entityCategory: "diagnostic", state: GetBatteryLevel().ToString());
-            foreach (var data in GetMemoryData()) await PublishSensor("sensor", $"{data.Name} Memory Free", icon: "mdi:memory", stateClass: "measurement", unitOfMeasurement: "MiB", entityCategory: "diagnostic", state: data.FreeMiB.ToString("G3"));
-            foreach (var data in GetStorageData()) await PublishSensor("sensor", $"{data.Name} Storage Free", icon: "mdi:harddisk", stateClass: "measurement", unitOfMeasurement: "GiB", entityCategory: "diagnostic", state: data.FreeGiB.ToString("G3"));
+            foreach (var data in GetMemoryData())
+            {
+                await PublishSensor("sensor", $"{data.Name} Memory Free", icon: "mdi:memory", stateClass: "measurement", unitOfMeasurement: "MiB", entityCategory: "diagnostic", state: data.FreeMiB.ToString("F1"));
+                await PublishSensor("sensor", $"{data.Name} Memory Use", icon: "mdi:memory", stateClass: "measurement", unitOfMeasurement: "MiB", entityCategory: "diagnostic", state: data.UsedMiB.ToString("F1"));
+                await PublishSensor("sensor", $"{data.Name} Memory Use (percent)", icon: "mdi:memory", stateClass: "measurement", unitOfMeasurement: "%", entityCategory: "diagnostic", state: data.UsedPercent.ToString("F1"));
+            }
+            foreach (var data in GetStorageData())
+            {
+                await PublishSensor("sensor", $"{data.Name} Storage Free", icon: "mdi:harddisk", stateClass: "measurement", unitOfMeasurement: "GiB", entityCategory: "diagnostic", state: data.FreeGiB.ToString("F1"));
+                await PublishSensor("sensor", $"{data.Name} Storage Use", icon: "mdi:harddisk", stateClass: "measurement", unitOfMeasurement: "GiB", entityCategory: "diagnostic", state: data.UsedGiB.ToString("F1"));
+                await PublishSensor("sensor", $"{data.Name} Storage Use (percent)", icon: "mdi:harddisk", stateClass: "measurement", unitOfMeasurement: "%", entityCategory: "diagnostic", state: data.UsedPercent.ToString("F1"));
+            }
 
             VerboseLog("Execute: Finish");
         }
@@ -68,7 +78,7 @@ namespace HA_Agent
         )
         {
             var prefix = $"{Prefix}/{component}/{MachineName}/{MachineName}";
-            var safeName = name.ToLowerInvariant().Replace(' ', '_').Replace(":", "");
+            var safeName = name.ToLowerInvariant().Replace(' ', '_').Replace(":", "").Replace("(", "").Replace(")", "");
             var stateTopic = $"{prefix}_{safeName}/state";
 
             await Publish($"{prefix}_{safeName}/config", new Dictionary<string, object?>
@@ -184,9 +194,9 @@ namespace HA_Agent
                 var collection = searcher.Get().GetEnumerator();
                 if (collection.MoveNext())
                 {
-                    list.Add(new NameValueData("Physical", (ulong)collection.Current["FreePhysicalMemory"] * 1024));
-                    list.Add(new NameValueData("Paging", (ulong)collection.Current["FreeSpaceInPagingFiles"] * 1024));
-                    list.Add(new NameValueData("Virtual", (ulong)collection.Current["FreeVirtualMemory"] * 1024));
+                    list.Add(new NameValueData("Physical", (ulong)collection.Current["FreePhysicalMemory"] * 1024, (ulong)collection.Current["TotalVisibleMemorySize"] * 1024));
+                    list.Add(new NameValueData("Paging", (ulong)collection.Current["FreeSpaceInPagingFiles"] * 1024, (ulong)collection.Current["SizeStoredInPagingFiles"] * 1024));
+                    list.Add(new NameValueData("Virtual", (ulong)collection.Current["FreeVirtualMemory"] * 1024, (ulong)collection.Current["TotalVirtualMemorySize"] * 1024));
                 }
             }
             return list;
@@ -204,7 +214,7 @@ namespace HA_Agent
                 {
                     if (volume["DriveLetter"] != null && (uint)volume["DriveType"] == 3)
                     {
-                        list.Add(new NameValueData((string)volume["DriveLetter"], (ulong)volume["FreeSpace"]));
+                        list.Add(new NameValueData((string)volume["DriveLetter"], (ulong)volume["FreeSpace"], (ulong)volume["Capacity"]));
                     }
                 }
             }
@@ -212,9 +222,15 @@ namespace HA_Agent
         }
     }
 
-    record NameValueData(string Name, float FreeBytes)
+    record NameValueData(string Name, float FreeBytes, float TotalBytes)
     {
         public float FreeMiB => FreeBytes / 1024 / 1024;
         public float FreeGiB => FreeBytes / 1024 / 1024 / 1024;
+        public float FreePercent => 100 * FreeBytes / TotalBytes;
+
+        public float UsedBytes => TotalBytes - FreeBytes;
+        public float UsedMiB => UsedBytes / 1024 / 1024;
+        public float UsedGiB => UsedBytes / 1024 / 1024 / 1024;
+        public float UsedPercent => 100 * UsedBytes / TotalBytes;
     }
 }
