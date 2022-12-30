@@ -1,0 +1,10 @@
+{
+  "mqtt": {
+    "server": "homeassistant",
+    "username": "homeassistant",
+    "password": "homeassistant"
+  },
+  "homeassistant": {
+    "deviceName": "My Computer"
+  }
+}
