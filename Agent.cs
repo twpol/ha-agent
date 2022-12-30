@@ -10,6 +10,7 @@ namespace HA_Agent
     class Agent
     {
         bool Verbose;
+        bool DryRun;
         IConfigurationSection ConfigMQTT;
         IConfigurationSection ConfigHA;
         string Prefix;
@@ -18,9 +19,10 @@ namespace HA_Agent
 
         IMqttClient? Client;
 
-        public Agent(IConfigurationRoot config, bool verbose)
+        public Agent(IConfigurationRoot config, bool verbose, bool dryRun)
         {
             Verbose = verbose;
+            DryRun = dryRun;
             ConfigMQTT = config.GetSection("mqtt");
             ConfigHA = config.GetSection("homeassistant");
             Prefix = ConfigHA["prefix"] ?? "homeassistant";
@@ -94,12 +96,19 @@ namespace HA_Agent
         {
             if (Client == null) throw new InvalidOperationException("Cannot publish on uninitialised agent");
 
-            VerboseLog($"Publish {topic} payload {payload}");
-            await Client.PublishAsync(new MqttApplicationMessageBuilder()
-                .WithTopic(topic)
-                .WithPayload(payload)
-                .WithRetainFlag(retain)
-                .Build());
+            if (DryRun)
+            {
+                VerboseLog($"Would publish {topic} payload {payload}");
+            }
+            else
+            {
+                VerboseLog($"Publish {topic} payload {payload}");
+                await Client.PublishAsync(new MqttApplicationMessageBuilder()
+                    .WithTopic(topic)
+                    .WithPayload(payload)
+                    .WithRetainFlag(retain)
+                    .Build());
+            }
         }
 
         IDictionary<string, object>? DeviceConfig;

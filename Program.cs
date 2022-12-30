@@ -7,11 +7,12 @@ namespace HA_Agent
         /// <summary>A service which collects device data for Home Assistant</summary>
         /// <param name="config">Path to configuration file</param>
         /// <param name="verbose">Display more details about what's going on</param>
+        /// <param name="dryRun">Do not perform any actions, only pretend</param>
         /// <param name="once">Run data collection once only</param>
-        static async Task Main(FileInfo? config = null, bool verbose = false, bool once = false)
+        static async Task Main(FileInfo? config = null, bool verbose = false, bool dryRun = false, bool once = false)
         {
             if (config == null) config = new FileInfo("config.json");
-            var agent = new Agent(LoadConfiguration(config), verbose);
+            var agent = new Agent(LoadConfiguration(config), verbose, dryRun);
             await agent.Start();
             if (once)
             {

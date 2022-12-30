@@ -21,6 +21,10 @@ HAAgent [options]
 
   Display more details about what's going on.
 
+- `--dry-run`
+
+  Do not perform any actions, only pretend.
+
 - `--once`
 
   Run data collection once only.
