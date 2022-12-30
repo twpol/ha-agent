@@ -48,8 +48,8 @@ namespace HA_Agent
 
             await PublishSensor("sensor", "Last Reboot", icon: "mdi:restart", deviceClass: "timestamp", entityCategory: "diagnostic", state: GetLastReboot().ToString("s") + "Z");
             await PublishSensor("sensor", "Battery Level", icon: "mdi:battery-charging", deviceClass: "battery", unitOfMeasurement: "%", entityCategory: "diagnostic", state: GetBatteryLevel().ToString());
-            foreach (var free in GetFreeMemory()) await PublishSensor("sensor", $"{free.Name} Free Memory", icon: "mdi:memory", stateClass: "measurement", unitOfMeasurement: "GB", entityCategory: "diagnostic", state: free.FreeGB.ToString("G3"));
-            foreach (var free in GetFreeStorage()) await PublishSensor("sensor", $"{free.Name} Free Storage", icon: "mdi:harddisk", stateClass: "measurement", unitOfMeasurement: "GB", entityCategory: "diagnostic", state: free.FreeGB.ToString("G3"));
+            foreach (var data in GetMemoryData()) await PublishSensor("sensor", $"{data.Name} Memory Free", icon: "mdi:memory", stateClass: "measurement", unitOfMeasurement: "GB", entityCategory: "diagnostic", state: data.FreeGB.ToString("G3"));
+            foreach (var data in GetStorageData()) await PublishSensor("sensor", $"{data.Name} Storage Free", icon: "mdi:harddisk", stateClass: "measurement", unitOfMeasurement: "GB", entityCategory: "diagnostic", state: data.FreeGB.ToString("G3"));
 
             VerboseLog("Execute: Finish");
         }
@@ -165,9 +165,9 @@ namespace HA_Agent
             return 100;
         }
 
-        List<NameValueFree> GetFreeMemory()
+        List<NameValueData> GetMemoryData()
         {
-            var list = new List<NameValueFree>();
+            var list = new List<NameValueData>();
             if (OperatingSystem.IsWindows())
             {
                 var query = new ObjectQuery("SELECT * FROM Win32_OperatingSystem");
@@ -175,17 +175,17 @@ namespace HA_Agent
                 var collection = searcher.Get().GetEnumerator();
                 if (collection.MoveNext())
                 {
-                    list.Add(new NameValueFree("Physical", (float)(ulong)collection.Current["FreePhysicalMemory"] / 1024 / 1024));
-                    list.Add(new NameValueFree("Paging", (float)(ulong)collection.Current["FreeSpaceInPagingFiles"] / 1024 / 1024));
-                    list.Add(new NameValueFree("Virtual", (float)(ulong)collection.Current["FreeVirtualMemory"] / 1024 / 1024));
+                    list.Add(new NameValueData("Physical", (float)(ulong)collection.Current["FreePhysicalMemory"] / 1024 / 1024));
+                    list.Add(new NameValueData("Paging", (float)(ulong)collection.Current["FreeSpaceInPagingFiles"] / 1024 / 1024));
+                    list.Add(new NameValueData("Virtual", (float)(ulong)collection.Current["FreeVirtualMemory"] / 1024 / 1024));
                 }
             }
             return list;
         }
 
-        List<NameValueFree> GetFreeStorage()
+        List<NameValueData> GetStorageData()
         {
-            var list = new List<NameValueFree>();
+            var list = new List<NameValueData>();
             if (OperatingSystem.IsWindows())
             {
                 var query = new ObjectQuery("SELECT * FROM Win32_Volume");
@@ -195,7 +195,7 @@ namespace HA_Agent
                 {
                     if (volume["DriveLetter"] != null && (uint)volume["DriveType"] == 3)
                     {
-                        list.Add(new NameValueFree((string)volume["DriveLetter"], (float)(ulong)volume["FreeSpace"] / 1024 / 1024 / 1024));
+                        list.Add(new NameValueData((string)volume["DriveLetter"], (float)(ulong)volume["FreeSpace"] / 1024 / 1024 / 1024));
                     }
                 }
             }
@@ -203,5 +203,5 @@ namespace HA_Agent
         }
     }
 
-    record NameValueFree(string Name, float FreeGB);
+    record NameValueData(string Name, float FreeGB);
 }
