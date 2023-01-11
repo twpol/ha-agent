@@ -16,6 +16,7 @@ namespace HA_Agent
             await agent.Start();
             if (once)
             {
+                Thread.Sleep(10000);
                 await agent.Execute();
             }
             else

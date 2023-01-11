@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Linq;
 using System.Management;
 using System.Text.Json;
@@ -16,6 +17,8 @@ namespace HA_Agent
         string Prefix;
         string MachineName;
         string DeviceName;
+        PerformanceCounter? CPUUtility;
+        PerformanceCounter? CPUPerformance;
 
         IMqttClient? Client;
 
@@ -28,6 +31,8 @@ namespace HA_Agent
             Prefix = ConfigHA["prefix"] ?? "homeassistant";
             MachineName = Environment.MachineName.ToLowerInvariant();
             DeviceName = ConfigHA["deviceName"] ?? Environment.MachineName;
+            CPUPerformance = OperatingSystem.IsWindows() ? new PerformanceCounter("Processor Information", "% Processor Performance", "_Total") : null;
+            CPUUtility = OperatingSystem.IsWindows() ? new PerformanceCounter("Processor Information", "% Processor Utility", "_Total") : null;
         }
 
         public async Task Start()
@@ -39,6 +44,12 @@ namespace HA_Agent
             var options = new MqttClientOptionsBuilder().WithTcpServer(ConfigMQTT["server"], int.Parse(ConfigMQTT["port"] ?? "1883"));
             if (ConfigMQTT["username"] != null) options = options.WithCredentials(ConfigMQTT["username"], ConfigMQTT["password"]);
             await Client.ConnectAsync(options.Build());
+
+            if (OperatingSystem.IsWindows() && CPUPerformance != null && CPUUtility != null)
+            {
+                CPUPerformance.NextValue();
+                CPUUtility.NextValue();
+            }
         }
 
         public async Task Execute()
@@ -61,6 +72,15 @@ namespace HA_Agent
                 await PublishSensor("sensor", $"Disk {data.Name} free", icon: "mdi:harddisk", stateClass: "measurement", unitOfMeasurement: "GiB", entityCategory: "diagnostic", state: data.FreeGiB.ToString("F1"));
                 await PublishSensor("sensor", $"Disk {data.Name} use", icon: "mdi:harddisk", stateClass: "measurement", unitOfMeasurement: "GiB", entityCategory: "diagnostic", state: data.UsedGiB.ToString("F1"));
                 await PublishSensor("sensor", $"Disk {data.Name} use (percent)", icon: "mdi:harddisk", stateClass: "measurement", unitOfMeasurement: "%", entityCategory: "diagnostic", state: data.UsedPercent.ToString("F1"));
+            }
+            if (OperatingSystem.IsWindows() && CPUPerformance != null && CPUUtility != null)
+            {
+                var icon = Environment.Is64BitOperatingSystem ? "mdi:cpu-64-bit" : "mdi:cpu-32-bit";
+                var performance = CPUPerformance.NextValue();
+                var utility = CPUUtility.NextValue();
+                await PublishSensor("sensor", "Processor performance", icon: icon, stateClass: "measurement", unitOfMeasurement: "%", entityCategory: "diagnostic", state: performance.ToString("F1"));
+                await PublishSensor("sensor", "Processor utility", icon: icon, stateClass: "measurement", unitOfMeasurement: "%", entityCategory: "diagnostic", state: utility.ToString("F1"));
+                await PublishSensor("sensor", "Processor use", icon: icon, stateClass: "measurement", unitOfMeasurement: "%", entityCategory: "diagnostic", state: (100 * utility / performance).ToString("F1"));
             }
 
             VerboseLog("Execute: Finish");
