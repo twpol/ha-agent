@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Linq;
 using System.Management;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
@@ -10,16 +9,15 @@ namespace HA_Agent
 {
     class Agent
     {
-        bool Verbose;
-        bool DryRun;
-        IConfigurationSection ConfigMQTT;
-        IConfigurationSection ConfigHA;
-        string Prefix;
-        string MachineName;
-        string DeviceName;
-        PerformanceCounter? CPUUtility;
-        PerformanceCounter? CPUPerformance;
-
+        readonly bool Verbose;
+        readonly bool DryRun;
+        readonly IConfigurationSection ConfigMQTT;
+        readonly IConfigurationSection ConfigHA;
+        readonly string Prefix;
+        readonly string MachineName;
+        readonly string DeviceName;
+        readonly PerformanceCounter? CPUUtility;
+        readonly PerformanceCounter? CPUPerformance;
         IMqttClient? Client;
 
         public Agent(IConfigurationRoot config, bool verbose, bool dryRun)
@@ -111,7 +109,7 @@ namespace HA_Agent
                 { "device_class", deviceClass },
                 { "icon", icon },
                 { "name", $"{DeviceName} {name}" },
-                { "entity_category", "diagnostic" },
+                { "entity_category", entityCategory },
                 { "device", GetDeviceConfig() },
                 { "unique_id", $"{MachineName}_{safeName}" },
                 { "state_topic", stateTopic },
@@ -145,27 +143,25 @@ namespace HA_Agent
         }
 
         IDictionary<string, object>? DeviceConfig;
+
         IDictionary<string, object> GetDeviceConfig()
         {
-            if (DeviceConfig == null)
+            DeviceConfig ??= new Dictionary<string, object>
             {
-                DeviceConfig = new Dictionary<string, object>
-                {
-                    { "identifiers", $"ha-agent.{MachineName}" },
-                    { "manufacturer", GetDeviceManufacturer() },
-                    { "model", GetDeviceModel() },
-                    { "name", DeviceName },
-                };
-            }
+                { "identifiers", $"ha-agent.{MachineName}" },
+                { "manufacturer", GetDeviceManufacturer() },
+                { "model", GetDeviceModel() },
+                { "name", DeviceName },
+            };
             return DeviceConfig;
         }
 
         void VerboseLog(string message)
         {
-            if (Verbose) Console.WriteLine($"{DateTimeOffset.UtcNow.ToString("u")}: {message}");
+            if (Verbose) Console.WriteLine($"{DateTimeOffset.UtcNow:u}: {message}");
         }
 
-        string GetDeviceManufacturer()
+        static string GetDeviceManufacturer()
         {
             if (OperatingSystem.IsWindows())
             {
@@ -178,7 +174,7 @@ namespace HA_Agent
             return "";
         }
 
-        string GetDeviceModel()
+        static string GetDeviceModel()
         {
             if (OperatingSystem.IsWindows())
             {
@@ -190,12 +186,12 @@ namespace HA_Agent
             return "";
         }
 
-        DateTimeOffset GetLastReboot()
+        static DateTimeOffset GetLastReboot()
         {
             return DateTimeOffset.UtcNow - TimeSpan.FromMilliseconds(Environment.TickCount64);
         }
 
-        int GetBatteryLevel()
+        static int GetBatteryLevel()
         {
             if (OperatingSystem.IsWindows())
             {
@@ -207,7 +203,7 @@ namespace HA_Agent
             return 100;
         }
 
-        List<NameValueData> GetMemoryData()
+        static List<NameValueData> GetMemoryData()
         {
             var list = new List<NameValueData>();
             if (OperatingSystem.IsWindows())
@@ -225,7 +221,7 @@ namespace HA_Agent
             return list;
         }
 
-        List<NameValueData> GetStorageData()
+        static List<NameValueData> GetStorageData()
         {
             var list = new List<NameValueData>();
             if (OperatingSystem.IsWindows())

@@ -11,7 +11,7 @@ namespace HA_Agent
         /// <param name="once">Run data collection once only</param>
         static async Task Main(FileInfo? config = null, bool verbose = false, bool dryRun = false, bool once = false)
         {
-            if (config == null) config = new FileInfo("config.json");
+            config ??= new FileInfo("config.json");
             var agent = new Agent(LoadConfiguration(config), verbose, dryRun);
             await agent.Start();
             if (once)
