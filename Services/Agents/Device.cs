@@ -1,60 +1,34 @@
 using System.Diagnostics;
 using System.Management;
-using System.Text.Json;
+using HA_Agent.Services;
 using Microsoft.Extensions.Configuration;
-using MQTTnet;
-using MQTTnet.Client;
 
-namespace HA_Agent
+namespace HA_Agent.Agents
 {
-    class Agent
+    class Device : Agent
     {
-        readonly bool Verbose;
-        readonly bool DryRun;
-        readonly IConfigurationSection ConfigMQTT;
-        readonly IConfigurationSection ConfigHA;
-        readonly string Prefix;
-        readonly string MachineName;
-        readonly string DeviceName;
         readonly PerformanceCounter? CPUUtility;
         readonly PerformanceCounter? CPUPerformance;
-        IMqttClient? Client;
 
-        public Agent(IConfigurationRoot config, bool verbose, bool dryRun)
+        public Device(HomeAssistant homeAssistant, IConfigurationRoot config, bool verbose, bool dryRun)
+            : base(homeAssistant, Environment.MachineName, config["homeassistant:deviceName"] ?? Environment.MachineName, verbose, dryRun)
         {
-            Verbose = verbose;
-            DryRun = dryRun;
-            ConfigMQTT = config.GetSection("mqtt");
-            ConfigHA = config.GetSection("homeassistant");
-            Prefix = ConfigHA["prefix"] ?? "homeassistant";
-            MachineName = Environment.MachineName.ToLowerInvariant();
-            DeviceName = ConfigHA["deviceName"] ?? Environment.MachineName;
             CPUPerformance = OperatingSystem.IsWindows() ? new PerformanceCounter("Processor Information", "% Processor Performance", "_Total") : null;
             CPUUtility = OperatingSystem.IsWindows() ? new PerformanceCounter("Processor Information", "% Processor Utility", "_Total") : null;
         }
 
-        public async Task Start()
+        public override Task Start()
         {
-            Client = new MqttFactory().CreateMqttClient();
-            Client.ConnectedAsync += e => { VerboseLog($"MQTT connected to {Client.Options.ChannelOptions}"); return Task.CompletedTask; };
-            Client.DisconnectedAsync += e => { VerboseLog($"MQTT disconnected from {Client.Options.ChannelOptions}"); return Task.CompletedTask; };
-
-            var options = new MqttClientOptionsBuilder().WithTcpServer(ConfigMQTT["server"], int.Parse(ConfigMQTT["port"] ?? "1883"));
-            if (ConfigMQTT["username"] != null) options = options.WithCredentials(ConfigMQTT["username"], ConfigMQTT["password"]);
-            await Client.ConnectAsync(options.Build());
-
             if (OperatingSystem.IsWindows() && CPUPerformance != null && CPUUtility != null)
             {
                 CPUPerformance.NextValue();
                 CPUUtility.NextValue();
             }
+            return Task.CompletedTask;
         }
 
-        public async Task Execute()
+        public override async Task Execute()
         {
-            if (Client == null) throw new InvalidOperationException("Cannot execute on uninitialised agent");
-            if (!Client.IsConnected) throw new InvalidOperationException("Not connected to MQTT");
-
             VerboseLog("Execute: Start");
 
             await PublishSensor("sensor", "Last Reboot", icon: "mdi:restart", deviceClass: "timestamp", entityCategory: "diagnostic", state: GetLastReboot().ToString("s") + "Z");
@@ -87,78 +61,18 @@ namespace HA_Agent
             VerboseLog("Execute: Finish");
         }
 
-        async Task PublishSensor(
-            string component,
-            string name,
-            string? deviceClass = null,
-            string? entityCategory = null,
-            string? icon = null,
-            string? stateClass = null,
-            string? unitOfMeasurement = null,
-            string state = ""
-        )
-        {
-            var prefix = $"{Prefix}/{component}/{MachineName}/{MachineName}";
-            var safeName = name.ToLowerInvariant().Replace(' ', '_').Replace(":", "").Replace("(", "").Replace(")", "");
-            var stateTopic = $"{prefix}_{safeName}/state";
-
-            await Publish($"{prefix}_{safeName}/config", new Dictionary<string, object?>
-            {
-                { "state_class", stateClass },
-                { "unit_of_measurement", unitOfMeasurement },
-                { "device_class", deviceClass },
-                { "icon", icon },
-                { "name", $"{DeviceName} {name}" },
-                { "entity_category", entityCategory },
-                { "device", GetDeviceConfig() },
-                { "unique_id", $"{MachineName}_{safeName}" },
-                { "state_topic", stateTopic },
-            }.Where(kvp => kvp.Value != null).ToDictionary(kvp => kvp.Key, kvp => kvp.Value));
-
-            await Publish(stateTopic, state);
-        }
-
-        async Task Publish(string topic, IDictionary<string, object?> json, bool retain = false)
-        {
-            await Publish(topic, JsonSerializer.Serialize(json), retain);
-        }
-
-        async Task Publish(string topic, string payload, bool retain = false)
-        {
-            if (Client == null) throw new InvalidOperationException("Cannot publish on uninitialised agent");
-
-            if (DryRun)
-            {
-                VerboseLog($"Would publish {topic} payload {payload}");
-            }
-            else
-            {
-                VerboseLog($"Publish {topic} payload {payload}");
-                await Client.PublishAsync(new MqttApplicationMessageBuilder()
-                    .WithTopic(topic)
-                    .WithPayload(payload)
-                    .WithRetainFlag(retain)
-                    .Build());
-            }
-        }
-
         IDictionary<string, object>? DeviceConfig;
 
-        IDictionary<string, object> GetDeviceConfig()
+        protected override IDictionary<string, object> GetDeviceConfig()
         {
             DeviceConfig ??= new Dictionary<string, object>
             {
-                { "identifiers", $"ha-agent.{MachineName}" },
+                { "identifiers", $"ha-agent.{NodeId}" },
                 { "manufacturer", GetDeviceManufacturer() },
                 { "model", GetDeviceModel() },
-                { "name", DeviceName },
+                { "name", NodeName },
             };
             return DeviceConfig;
-        }
-
-        void VerboseLog(string message)
-        {
-            if (Verbose) Console.WriteLine($"{DateTimeOffset.UtcNow:u}: {message}");
         }
 
         static string GetDeviceManufacturer()
@@ -239,17 +153,5 @@ namespace HA_Agent
             }
             return list;
         }
-    }
-
-    record NameValueData(string Name, float FreeBytes, float TotalBytes)
-    {
-        public float FreeMiB => FreeBytes / 1024 / 1024;
-        public float FreeGiB => FreeBytes / 1024 / 1024 / 1024;
-        public float FreePercent => 100 * FreeBytes / TotalBytes;
-
-        public float UsedBytes => TotalBytes - FreeBytes;
-        public float UsedMiB => UsedBytes / 1024 / 1024;
-        public float UsedGiB => UsedBytes / 1024 / 1024 / 1024;
-        public float UsedPercent => 100 * UsedBytes / TotalBytes;
     }
 }

@@ -12,12 +12,15 @@ namespace HA_Agent
         static async Task Main(FileInfo? config = null, bool verbose = false, bool dryRun = false, bool once = false)
         {
             config ??= new FileInfo("config.json");
-            var agent = new Agent(LoadConfiguration(config), verbose, dryRun);
-            await agent.Start();
+            var configRoot = LoadConfiguration(config);
+            var ha = new Services.HomeAssistant(configRoot, verbose, dryRun);
+            await ha.Connect();
+            var device = new Agents.Device(ha, configRoot, verbose, dryRun);
+            await device.Start();
             if (once)
             {
                 Thread.Sleep(10000);
-                await agent.Execute();
+                await device.Execute();
             }
             else
             {
@@ -25,7 +28,7 @@ namespace HA_Agent
                 while (true)
                 {
                     Thread.Sleep(60000 - (int)((DateTimeOffset.Now.ToUnixTimeMilliseconds() - offsetSecondsMs) % 60000));
-                    await agent.Execute();
+                    await device.Execute();
                 }
             }
         }
