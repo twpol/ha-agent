@@ -41,6 +41,12 @@ HAAgent [options]
   * `system` (object, optional) Configuration for a system agent (key name is not used)
     * `type` (string) `system`
     * `name` (string, optional) Display name for this device in Home Assistant (default value: current hostname)
+  * `exchange` (object, optional) Configuration for an Exchange agent (key name is not used)
+    * `type` (string) `exchange`
+    * `name` (string, optional) Display name for this device in Home Assistant (default value: email)
+    * `email` (string) Email address for Exchange account
+    * `username` (string) Username
+    * `password` (string) Password
 
 ## Example configuration
 
@@ -55,6 +61,13 @@ HAAgent [options]
     "system": {
       "type": "system",
       "name": "My Computer"
+    },
+    "exchange": {
+      "type": "exchange",
+      "name": "Example email account",
+      "email": "example@outlook.com",
+      "username": "example@outlook.com",
+      "password": "example"
     }
   }
 }

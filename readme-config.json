@@ -12,6 +12,14 @@
       "_": "Configuration for a system agent (key name is not used)",
       "type": "`system`",
       "name?": "Display name for this device in Home Assistant (default value: current hostname)"
+    },
+    "exchange?": {
+      "_": "Configuration for an Exchange agent (key name is not used)",
+      "type": "`exchange`",
+      "name?": "Display name for this device in Home Assistant (default value: email)",
+      "email": "Email address for Exchange account",
+      "username": "Username",
+      "password": "Password"
     }
   }
 }

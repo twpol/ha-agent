@@ -8,6 +8,13 @@
     "system": {
       "type": "system",
       "name": "My Computer"
+    },
+    "exchange": {
+      "type": "exchange",
+      "name": "Example email account",
+      "email": "example@outlook.com",
+      "username": "example@outlook.com",
+      "password": "example"
     }
   }
 }

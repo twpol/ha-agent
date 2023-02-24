@@ -20,6 +20,7 @@ namespace HA_Agent
             var agents = configRoot.GetSection("agents").GetChildren().Select<IConfigurationSection, Agents.Agent>(section => section["type"] switch
             {
                 "system" => new Agents.System(ha, section, verbose, dryRun),
+                "exchange" => new Agents.Exchange(ha, section, verbose, dryRun),
                 _ => new Agents.Noop(ha, section, verbose, dryRun),
             }).ToList();
             foreach (var agent in agents) await agent.Start();

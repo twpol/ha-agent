@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using HA_Agent.Services;
 
 namespace HA_Agent.Agents
@@ -24,7 +25,10 @@ namespace HA_Agent.Agents
 
         protected abstract IDictionary<string, object> GetDeviceConfig();
 
-        protected static string GetSafeName(string name) => name.ToLowerInvariant().Replace(' ', '_').Replace(":", "").Replace("(", "").Replace(")", "");
+        // The ID of the device must only consist of characters from the character class [a-zA-Z0-9_-] (alphanumerics, underscore and hyphen).
+        readonly static Regex SafeNameRegex = new("[^a-zA-Z0-9_-]+", RegexOptions.Compiled);
+
+        protected static string GetSafeName(string name) => SafeNameRegex.Replace(name.ToLowerInvariant(), "_").Trim('_');
 
         protected async Task PublishSensor(
             string component,
