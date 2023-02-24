@@ -20,9 +20,11 @@ namespace HA_Agent.Agents
 
         public abstract Task Execute();
 
+        protected override string GetName() => $"{GetType().Name}({NodeId})";
+
         protected abstract IDictionary<string, object> GetDeviceConfig();
 
-        protected string GetSafeName(string name) => name.ToLowerInvariant().Replace(' ', '_').Replace(":", "").Replace("(", "").Replace(")", "");
+        protected static string GetSafeName(string name) => name.ToLowerInvariant().Replace(' ', '_').Replace(":", "").Replace("(", "").Replace(")", "");
 
         protected async Task PublishSensor(
             string component,

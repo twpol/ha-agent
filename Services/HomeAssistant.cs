@@ -9,14 +9,14 @@ namespace HA_Agent.Services
     {
         public readonly string Prefix;
 
-        readonly IConfigurationRoot Config;
+        readonly IConfigurationSection Config;
         readonly IMqttClient Client;
 
-        public HomeAssistant(IConfigurationRoot config, bool verbose, bool dryRun)
+        public HomeAssistant(IConfigurationSection config, bool verbose, bool dryRun)
             : base(verbose, dryRun)
         {
             Config = config;
-            Prefix = Config["homeassistant:prefix"] ?? "homeassistant";
+            Prefix = Config["prefix"] ?? "homeassistant";
 
             Client = new MqttFactory().CreateMqttClient();
             Client.ConnectedAsync += e => { VerboseLog($"MQTT connected to {Client.Options.ChannelOptions}"); return Task.CompletedTask; };
@@ -25,8 +25,8 @@ namespace HA_Agent.Services
 
         public async Task Connect()
         {
-            var options = new MqttClientOptionsBuilder().WithTcpServer(Config["mqtt:server"], int.Parse(Config["mqtt:port"] ?? "1883"));
-            if (Config["mqtt:username"] != null) options = options.WithCredentials(Config["mqtt:username"], Config["mqtt:password"]);
+            var options = new MqttClientOptionsBuilder().WithTcpServer(Config["server"], int.Parse(Config["port"] ?? "1883"));
+            if (Config["username"] != null) options = options.WithCredentials(Config["username"], Config["password"]);
             await Client.ConnectAsync(options.Build());
         }
 

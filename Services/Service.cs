@@ -11,9 +11,16 @@ namespace HA_Agent.Services
             DryRun = dryRun;
         }
 
+        protected virtual string GetName() => GetType().Name;
+
+        protected void Log(string message)
+        {
+            Console.WriteLine($"{DateTimeOffset.UtcNow:u}: {GetName()}: {message}");
+        }
+
         protected void VerboseLog(string message)
         {
-            if (Verbose) Console.WriteLine($"{DateTimeOffset.UtcNow:u}: {message}");
+            if (Verbose) Log(message);
         }
     }
 }

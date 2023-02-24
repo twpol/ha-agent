@@ -13,14 +13,21 @@ namespace HA_Agent
         {
             config ??= new FileInfo("config.json");
             var configRoot = LoadConfiguration(config);
-            var ha = new Services.HomeAssistant(configRoot, verbose, dryRun);
+
+            var ha = new Services.HomeAssistant(configRoot.GetSection("homeassistant"), verbose, dryRun);
             await ha.Connect();
-            var device = new Agents.Device(ha, configRoot, verbose, dryRun);
-            await device.Start();
+
+            var agents = configRoot.GetSection("agents").GetChildren().Select<IConfigurationSection, Agents.Agent>(section => section["type"] switch
+            {
+                "system" => new Agents.System(ha, section, verbose, dryRun),
+                _ => new Agents.Noop(ha, section, verbose, dryRun),
+            }).ToList();
+            foreach (var agent in agents) await agent.Start();
+
             if (once)
             {
                 Thread.Sleep(10000);
-                await device.Execute();
+                foreach (var agent in agents) await agent.Execute();
             }
             else
             {
@@ -28,7 +35,7 @@ namespace HA_Agent
                 while (true)
                 {
                     Thread.Sleep(60000 - (int)((DateTimeOffset.Now.ToUnixTimeMilliseconds() - offsetSecondsMs) % 60000));
-                    await device.Execute();
+                    foreach (var agent in agents) await agent.Execute();
                 }
             }
         }

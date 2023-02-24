@@ -31,26 +31,31 @@ HAAgent [options]
 
 ## Configuration
 
-* `mqtt` (object) configuration for MQTT server inside Home Assistant
-  * `server` (string) hostname or IP
-  * `port` (string, optional) port number (default value: `1883`)
-  * `username` (string, optional) username
-  * `password` (string, optional) password
-* `homeassistant` (object, optional) 
-  * `prefix` (string, optional) MQTT topic prefix (default value: `homeassistant`)
-  * `deviceName` (string, optional) Display name for this device in Home Assistant (default value: current hostname)
+* `homeassistant` (object) Configuration for Home Assistant MQTT discovery
+  * `server` (string) Hostname or IP
+  * `port` (string, optional) Port number (default value: `1883`)
+  * `username` (string, optional) Username
+  * `password` (string, optional) Password
+  * `prefix` (string, optional) Topic prefix (default value: `homeassistant`)
+* `agents` (object) 
+  * `system` (object, optional) Configuration for a system agent (key name is not used)
+    * `type` (string) `system`
+    * `name` (string, optional) Display name for this device in Home Assistant (default value: current hostname)
 
 ## Example configuration
 
 ```json
 {
-  "mqtt": {
+  "homeassistant": {
     "server": "homeassistant",
     "username": "homeassistant",
     "password": "homeassistant"
   },
-  "homeassistant": {
-    "deviceName": "My Computer"
+  "agents": {
+    "system": {
+      "type": "system",
+      "name": "My Computer"
+    }
   }
 }
 ```

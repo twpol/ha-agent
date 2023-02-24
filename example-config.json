@@ -1,10 +1,13 @@
 {
-  "mqtt": {
+  "homeassistant": {
     "server": "homeassistant",
     "username": "homeassistant",
     "password": "homeassistant"
   },
-  "homeassistant": {
-    "deviceName": "My Computer"
+  "agents": {
+    "system": {
+      "type": "system",
+      "name": "My Computer"
+    }
   }
 }

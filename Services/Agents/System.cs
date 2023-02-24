@@ -5,13 +5,13 @@ using Microsoft.Extensions.Configuration;
 
 namespace HA_Agent.Agents
 {
-    class Device : Agent
+    class System : Agent
     {
         readonly PerformanceCounter? CPUUtility;
         readonly PerformanceCounter? CPUPerformance;
 
-        public Device(HomeAssistant homeAssistant, IConfigurationRoot config, bool verbose, bool dryRun)
-            : base(homeAssistant, Environment.MachineName, config["homeassistant:deviceName"] ?? Environment.MachineName, verbose, dryRun)
+        public System(HomeAssistant homeAssistant, IConfigurationSection config, bool verbose, bool dryRun)
+            : base(homeAssistant, Environment.MachineName, config["name"] ?? Environment.MachineName, verbose, dryRun)
         {
             CPUPerformance = OperatingSystem.IsWindows() ? new PerformanceCounter("Processor Information", "% Processor Performance", "_Total") : null;
             CPUUtility = OperatingSystem.IsWindows() ? new PerformanceCounter("Processor Information", "% Processor Utility", "_Total") : null;
