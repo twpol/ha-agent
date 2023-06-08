@@ -10,19 +10,25 @@ namespace HA_Agent.Agents
         readonly PerformanceCounter? CPUUtility;
         readonly PerformanceCounter? CPUPerformance;
 
+        readonly Dictionary<string, WindowsDiskIO>? WindowsDiskIO;
+
         public System(HomeAssistant homeAssistant, IConfigurationSection config, bool verbose, bool dryRun)
             : base(homeAssistant, Environment.MachineName, config["name"] ?? Environment.MachineName, verbose, dryRun)
         {
             CPUPerformance = OperatingSystem.IsWindows() ? new PerformanceCounter("Processor Information", "% Processor Performance", "_Total") : null;
             CPUUtility = OperatingSystem.IsWindows() ? new PerformanceCounter("Processor Information", "% Processor Utility", "_Total") : null;
+            WindowsDiskIO = OperatingSystem.IsWindows() ? new() : null;
+            UpdateCounterLists();
         }
 
         public override Task Start()
         {
-            if (OperatingSystem.IsWindows() && CPUPerformance != null && CPUUtility != null)
+            if (OperatingSystem.IsWindows())
             {
-                CPUPerformance.NextValue();
-                CPUUtility.NextValue();
+                CPUPerformance?.NextValue();
+                CPUUtility?.NextValue();
+                if (WindowsDiskIO != null) foreach (var diskIo in WindowsDiskIO) diskIo.Value.NextValue();
+                UpdateCounterLists();
             }
             return Task.CompletedTask;
         }
@@ -47,6 +53,12 @@ namespace HA_Agent.Agents
                 await PublishSensor("sensor", $"Disk {data.Name} use", icon: "mdi:harddisk", stateClass: "measurement", unitOfMeasurement: "GiB", entityCategory: "diagnostic", state: data.UsedGiB.ToString("F1"));
                 await PublishSensor("sensor", $"Disk {data.Name} use (percent)", icon: "mdi:harddisk", stateClass: "measurement", unitOfMeasurement: "%", entityCategory: "diagnostic", state: data.UsedPercent.ToString("F1"));
             }
+            foreach (var data in GetStorageIO())
+            {
+                await PublishSensor("sensor", $"Disk {data.Name} bytes/sec", icon: "mdi:harddisk", stateClass: "measurement", unitOfMeasurement: "MiB/s", entityCategory: "diagnostic", state: data.TotalMiBPerSec.ToString("F1"));
+                await PublishSensor("sensor", $"Disk {data.Name} read bytes/sec", icon: "mdi:harddisk", stateClass: "measurement", unitOfMeasurement: "MiB/s", entityCategory: "diagnostic", state: data.ReadMiBPerSec.ToString("F1"));
+                await PublishSensor("sensor", $"Disk {data.Name} write bytes/sec", icon: "mdi:harddisk", stateClass: "measurement", unitOfMeasurement: "MiB/s", entityCategory: "diagnostic", state: data.WriteMiBPerSec.ToString("F1"));
+            }
             if (OperatingSystem.IsWindows() && CPUPerformance != null && CPUUtility != null)
             {
                 var icon = Environment.Is64BitOperatingSystem ? "mdi:cpu-64-bit" : "mdi:cpu-32-bit";
@@ -61,6 +73,38 @@ namespace HA_Agent.Agents
             }
 
             VerboseLog("Execute: Finish");
+        }
+
+        void UpdateCounterLists()
+        {
+            if (OperatingSystem.IsWindows() && WindowsDiskIO != null)
+            {
+                VerboseLog("UpdateCounterLists: Start");
+
+                var query = new ObjectQuery("SELECT * FROM Win32_PerfFormattedData_PerfDisk_LogicalDisk");
+                var searcher = new ManagementObjectSearcher(query);
+                var collection = searcher.Get();
+                var names = new HashSet<string>();
+                foreach (var disk in collection)
+                {
+                    var name = (string)disk["Name"];
+                    // Only accept two-letter drive names (e.g. allow "C:", skip "HarddiskVolume1" and "_Total")
+                    if (name.Length != 2) continue;
+                    names.Add(name);
+                    if (!WindowsDiskIO.ContainsKey(name))
+                    {
+                        VerboseLog($"UpdateCounterLists: Add Disk: {name}");
+                        WindowsDiskIO.Add(name, new WindowsDiskIO(name));
+                    }
+                }
+                foreach (var name in WindowsDiskIO.Keys.Where(name => !names.Contains(name)).ToList())
+                {
+                    VerboseLog($"UpdateCounterLists: Remove Disk: {name}");
+                    WindowsDiskIO.Remove(name);
+                }
+
+                VerboseLog("UpdateCounterLists: Finish");
+            }
         }
 
         IDictionary<string, object>? DeviceConfig;
@@ -151,6 +195,19 @@ namespace HA_Agent.Agents
                     {
                         list.Add(new NameValueData((string)volume["DriveLetter"], (ulong)volume["FreeSpace"], (ulong)volume["Capacity"]));
                     }
+                }
+            }
+            return list;
+        }
+
+        List<NameValueIO> GetStorageIO()
+        {
+            var list = new List<NameValueIO>();
+            if (OperatingSystem.IsWindows() && WindowsDiskIO != null)
+            {
+                foreach (var disk in WindowsDiskIO)
+                {
+                    list.Add(new NameValueIO(disk.Key, disk.Value.BytesReadPerSecond.NextValue(), disk.Value.BytesWritePerSecond.NextValue()));
                 }
             }
             return list;
