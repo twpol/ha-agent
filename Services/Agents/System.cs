@@ -56,8 +56,8 @@ namespace HA_Agent.Agents
             foreach (var data in GetStorageIO())
             {
                 await PublishSensor("sensor", $"Disk {data.Name} bytes/sec", icon: "mdi:harddisk", stateClass: "measurement", unitOfMeasurement: "MiB/s", entityCategory: "diagnostic", state: data.TotalMiBPerSec.ToString("F1"));
-                await PublishSensor("sensor", $"Disk {data.Name} read bytes/sec", icon: "mdi:harddisk", stateClass: "measurement", unitOfMeasurement: "MiB/s", entityCategory: "diagnostic", state: data.ReadMiBPerSec.ToString("F1"));
-                await PublishSensor("sensor", $"Disk {data.Name} write bytes/sec", icon: "mdi:harddisk", stateClass: "measurement", unitOfMeasurement: "MiB/s", entityCategory: "diagnostic", state: data.WriteMiBPerSec.ToString("F1"));
+                await PublishSensor("sensor", $"Disk {data.Name} read bytes/sec", icon: "mdi:folder-upload", stateClass: "measurement", unitOfMeasurement: "MiB/s", entityCategory: "diagnostic", state: data.ReadMiBPerSec.ToString("F1"));
+                await PublishSensor("sensor", $"Disk {data.Name} write bytes/sec", icon: "mdi:folder-download", stateClass: "measurement", unitOfMeasurement: "MiB/s", entityCategory: "diagnostic", state: data.WriteMiBPerSec.ToString("F1"));
             }
             if (OperatingSystem.IsWindows() && CPUPerformance != null && CPUUtility != null)
             {
