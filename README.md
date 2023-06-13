@@ -1,6 +1,6 @@
 ﻿# HA Agent
 
-A service which collects device data for Home Assistant.
+Service for collecting device data for Home Assistant.
 
 ## Usage
 
