@@ -37,6 +37,7 @@ HAAgent [options]
   * `username` (string, optional) Username
   * `password` (string, optional) Password
   * `prefix` (string, optional) Topic prefix (default value: `homeassistant`)
+  * `updateS` (string, optional) Number of seconds between updates (default value: `60`)
 * `agents` (object) 
   * `system` (object, optional) Configuration for a system agent (key name is not used)
     * `type` (string) `system`

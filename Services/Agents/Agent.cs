@@ -56,6 +56,7 @@ namespace HA_Agent.Agents
                 { "device", GetDeviceConfig() },
                 { "unique_id", $"{NodeId}_{safeName}" },
                 { "state_topic", stateTopic },
+                { "expire_after", HomeAssistant.UpdateIntervalS * 2 },
             }.Where(kvp => kvp.Value != null).ToDictionary(kvp => kvp.Key, kvp => kvp.Value));
 
             await HomeAssistant.Publish(stateTopic, state);

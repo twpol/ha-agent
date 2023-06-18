@@ -5,7 +5,8 @@
     "port?": "Port number (default value: `1883`)",
     "username?": "Username",
     "password?": "Password",
-    "prefix?": "Topic prefix (default value: `homeassistant`)"
+    "prefix?": "Topic prefix (default value: `homeassistant`)",
+    "updateS?": "Number of seconds between updates (default value: `60`)"
   },
   "agents": {
     "system?": {

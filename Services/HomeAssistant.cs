@@ -8,6 +8,8 @@ namespace HA_Agent.Services
     class HomeAssistant : Service
     {
         public readonly string Prefix;
+        public readonly int UpdateIntervalS;
+        public int UpdateIntervalMS => UpdateIntervalS * 1000;
 
         readonly IConfigurationSection Config;
         readonly IMqttClient Client;
@@ -17,6 +19,7 @@ namespace HA_Agent.Services
         {
             Config = config;
             Prefix = Config["prefix"] ?? "homeassistant";
+            if (!int.TryParse(Config["updateS"], out UpdateIntervalS)) UpdateIntervalS = 60;
 
             Client = new MqttFactory().CreateMqttClient();
             Client.ConnectedAsync += e => { VerboseLog($"MQTT connected to {Client.Options.ChannelOptions}"); return Task.CompletedTask; };
