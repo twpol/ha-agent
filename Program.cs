@@ -4,7 +4,7 @@ namespace HA_Agent
 {
     class Program
     {
-        /// <summary>A service which collects device data for Home Assistant</summary>
+        /// <summary>Service for collecting device data for Home Assistant</summary>
         /// <param name="config">Path to configuration file</param>
         /// <param name="verbose">Display more details about what's going on</param>
         /// <param name="dryRun">Do not perform any actions, only pretend</param>
@@ -32,10 +32,10 @@ namespace HA_Agent
             }
             else
             {
-                var offsetSecondsMs = new Random().Next(60000);
+                var offsetSecondsMs = new Random().Next(ha.UpdateIntervalMS);
                 while (true)
                 {
-                    Thread.Sleep(60000 - (int)((DateTimeOffset.Now.ToUnixTimeMilliseconds() - offsetSecondsMs) % 60000));
+                    Thread.Sleep(ha.UpdateIntervalMS - (int)((DateTimeOffset.Now.ToUnixTimeMilliseconds() - offsetSecondsMs) % ha.UpdateIntervalMS));
                     foreach (var agent in agents) await agent.Execute();
                 }
             }
