@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Management;
+using System.Net;
+using System.Net.NetworkInformation;
 using HA_Agent.Services;
 using Microsoft.Extensions.Configuration;
 
@@ -81,6 +83,9 @@ namespace HA_Agent.Agents
                 }
             }
 
+            await PublishSensor("sensor", $"Ping Internal", icon: "mdi:lan", stateClass: "measurement", unitOfMeasurement: "ms", entityCategory: "diagnostic", state: GetPing(GetInternalIPs())?.ToString("F1"));
+            await PublishSensor("sensor", $"Ping External", icon: "mdi:wan", stateClass: "measurement", unitOfMeasurement: "ms", entityCategory: "diagnostic", state: GetPing(GetExternalIPs())?.ToString("F1"));
+
             VerboseLog("Execute: Finish");
         }
 
@@ -140,6 +145,42 @@ namespace HA_Agent.Agents
 
                 VerboseLog("UpdateCounterLists: Finish");
             }
+        }
+
+        static HashSet<IPAddress> GetInternalIPs()
+        {
+            var internalIps = new HashSet<IPAddress>();
+            foreach (var inter in NetworkInterface.GetAllNetworkInterfaces())
+            {
+                var ipInfo = inter.GetIPProperties();
+                foreach (var ip in ipInfo.DhcpServerAddresses)
+                    internalIps.Add(ip);
+                foreach (var ip in ipInfo.DnsAddresses)
+                    internalIps.Add(ip);
+                foreach (var ip in ipInfo.GatewayAddresses)
+                    internalIps.Add(ip.Address);
+            }
+            return internalIps;
+        }
+
+        static HashSet<IPAddress> GetExternalIPs()
+        {
+            return new HashSet<IPAddress>
+            {
+                IPAddress.Parse("1.0.0.1"), // Cloudflare DNS
+                IPAddress.Parse("1.1.1.1"), // Cloudflare DNS
+                IPAddress.Parse("208.67.220.220"), // OpenDNS
+                IPAddress.Parse("208.67.222.222"), // OpenDNS
+                IPAddress.Parse("64.6.64.6"), // Verisign DNS
+                IPAddress.Parse("64.6.65.6"), // Verisign DNS
+                IPAddress.Parse("8.20.247.20"), // Comodo Secure DNS
+                IPAddress.Parse("8.26.56.26"), // Comodo Secure DNS
+                IPAddress.Parse("8.8.4.4"), // Google DNS
+                IPAddress.Parse("8.8.8.8"), // Google DNS
+                IPAddress.Parse("84.200.69.80"), // DNS.Watch
+                IPAddress.Parse("84.200.70.40"), // DNS.Watch
+                IPAddress.Parse("9.9.9.9") // Quad9 DNS
+            };
         }
 
         IDictionary<string, object>? DeviceConfig;
@@ -259,6 +300,25 @@ namespace HA_Agent.Agents
                 }
             }
             return list;
+        }
+
+        double? GetPing(HashSet<IPAddress> ips)
+        {
+            var pings = new List<long>();
+            foreach (var ip in ips)
+            {
+                var ping = new Ping();
+                try
+                {
+                    var reply = ping.Send(ip, 5000);
+                    if (reply.Status == IPStatus.Success) pings.Add(reply.RoundtripTime);
+                }
+                catch (PingException error)
+                {
+                    VerboseLog($"Ping {ip} {error.GetBaseException().Message}");
+                }
+            }
+            return pings.Count > 0 ? pings.Average() : null;
         }
     }
 }

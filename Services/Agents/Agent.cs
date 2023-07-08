@@ -38,9 +38,10 @@ namespace HA_Agent.Agents
             string? icon = null,
             string? stateClass = null,
             string? unitOfMeasurement = null,
-            string state = ""
+            string? state = ""
         )
         {
+            if (state == null) return;
             var safeName = GetSafeName(name);
             var configTopic = $"{HomeAssistant.Prefix}/{component}/{NodeId}/{NodeId}_{safeName}/config";
             var stateTopic = $"{HomeAssistant.Prefix}/{component}/{NodeId}/{NodeId}_{safeName}/state";
