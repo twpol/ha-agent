@@ -25,8 +25,13 @@ namespace HA_Agent.Agents
 
         protected abstract IDictionary<string, object> GetDeviceConfig();
 
+        readonly static Regex NormaliseSpaceRegex = new(" +", RegexOptions.Compiled);
+
+        protected static string GetNormalised(string name) => NormaliseSpaceRegex.Replace(name, " ").Trim();
+
         // The ID of the device must only consist of characters from the character class [a-zA-Z0-9_-] (alphanumerics, underscore and hyphen).
-        readonly static Regex SafeNameRegex = new("[^a-zA-Z0-9_-]+", RegexOptions.Compiled);
+        // Not including the underscore ("_") here allows any existing underscores to merge into disallowed characters.
+        readonly static Regex SafeNameRegex = new("[^a-zA-Z0-9-]+", RegexOptions.Compiled);
 
         protected static string GetSafeName(string name) => SafeNameRegex.Replace(name.ToLowerInvariant(), "_").Trim('_');
 
@@ -42,6 +47,7 @@ namespace HA_Agent.Agents
         )
         {
             if (state == null) return;
+            name = GetNormalised(name);
             var safeName = GetSafeName(name);
             var configTopic = $"{HomeAssistant.Prefix}/{component}/{NodeId}/{NodeId}_{safeName}/config";
             var stateTopic = $"{HomeAssistant.Prefix}/{component}/{NodeId}/{NodeId}_{safeName}/state";

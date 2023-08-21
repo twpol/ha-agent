@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Linq;
 using System.Management;
 using System.Net;
 using System.Net.NetworkInformation;
@@ -60,15 +61,15 @@ namespace HA_Agent.Agents
             }
             foreach (var data in GetStorageIO())
             {
-                await PublishSensor("sensor", $"Disk {data.Name} bytes/sec", icon: "mdi:harddisk", stateClass: "measurement", unitOfMeasurement: "MiB/s", entityCategory: "diagnostic", state: data.TotalMiBPerSec.ToString("F1"));
-                await PublishSensor("sensor", $"Disk {data.Name} read bytes/sec", icon: "mdi:folder-upload", stateClass: "measurement", unitOfMeasurement: "MiB/s", entityCategory: "diagnostic", state: data.ReadMiBPerSec.ToString("F1"));
-                await PublishSensor("sensor", $"Disk {data.Name} write bytes/sec", icon: "mdi:folder-download", stateClass: "measurement", unitOfMeasurement: "MiB/s", entityCategory: "diagnostic", state: data.WriteMiBPerSec.ToString("F1"));
+                await PublishSensor("sensor", $"DiskIO {data.Name} total", icon: "mdi:harddisk", stateClass: "measurement", unitOfMeasurement: "MiB/s", entityCategory: "diagnostic", state: data.TotalMiBPerSec.ToString("F1"));
+                await PublishSensor("sensor", $"DiskIO {data.Name} read", icon: "mdi:folder-upload", stateClass: "measurement", unitOfMeasurement: "MiB/s", entityCategory: "diagnostic", state: data.ReadMiBPerSec.ToString("F1"));
+                await PublishSensor("sensor", $"DiskIO {data.Name} write", icon: "mdi:folder-download", stateClass: "measurement", unitOfMeasurement: "MiB/s", entityCategory: "diagnostic", state: data.WriteMiBPerSec.ToString("F1"));
             }
             foreach (var data in GetNetworkIO())
             {
-                await PublishSensor("sensor", $"Network {data.Name} bytes/sec", icon: "mdi:network", stateClass: "measurement", unitOfMeasurement: "KiB/s", entityCategory: "diagnostic", state: data.TotalKiBPerSec.ToString("F1"));
-                await PublishSensor("sensor", $"Network {data.Name} received bytes/sec", icon: "mdi:download-network", stateClass: "measurement", unitOfMeasurement: "KiB/s", entityCategory: "diagnostic", state: data.ReadKiBPerSec.ToString("F1"));
-                await PublishSensor("sensor", $"Network {data.Name} sent bytes/sec", icon: "mdi:upload-network", stateClass: "measurement", unitOfMeasurement: "KiB/s", entityCategory: "diagnostic", state: data.WriteKiBPerSec.ToString("F1"));
+                await PublishSensor("sensor", $"NetworkIO {data.Name} total", icon: "mdi:network", stateClass: "measurement", unitOfMeasurement: "KiB/s", entityCategory: "diagnostic", state: data.TotalKiBPerSec.ToString("F1"));
+                await PublishSensor("sensor", $"NetworkIO {data.Name} received", icon: "mdi:download-network", stateClass: "measurement", unitOfMeasurement: "KiB/s", entityCategory: "diagnostic", state: data.ReadKiBPerSec.ToString("F1"));
+                await PublishSensor("sensor", $"NetworkIO {data.Name} sent", icon: "mdi:upload-network", stateClass: "measurement", unitOfMeasurement: "KiB/s", entityCategory: "diagnostic", state: data.WriteKiBPerSec.ToString("F1"));
             }
             if (OperatingSystem.IsWindows() && CPUPerformance != null && CPUUtility != null)
             {
@@ -272,6 +273,7 @@ namespace HA_Agent.Agents
                         list.Add(new NameValueData((string)volume["DriveLetter"], (ulong)volume["FreeSpace"], (ulong)volume["Capacity"]));
                     }
                 }
+                list.Add(list.Aggregate(new NameValueData("", 0, 0), (a, b) => new NameValueData("", a, b)));
             }
             return list;
         }
@@ -285,6 +287,7 @@ namespace HA_Agent.Agents
                 {
                     list.Add(new NameValueIO(disk.Key, disk.Value.BytesReadPerSecond.NextValue(), disk.Value.BytesWritePerSecond.NextValue()));
                 }
+                list.Add(list.Aggregate(new NameValueIO("", 0, 0), (a, b) => new NameValueIO("", a, b)));
             }
             return list;
         }
@@ -298,6 +301,7 @@ namespace HA_Agent.Agents
                 {
                     list.Add(new NameValueIO(network.Key, network.Value.BytesReceivedPerSecond.NextValue(), network.Value.BytesSentPerSecond.NextValue()));
                 }
+                list.Add(list.Aggregate(new NameValueIO("", 0, 0), (a, b) => new NameValueIO("", a, b)));
             }
             return list;
         }
