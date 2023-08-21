@@ -13,5 +13,9 @@ namespace HA_Agent.Services
 
         public float TotalMiB => TotalBytes / 1024 / 1024;
         public float TotalGiB => TotalBytes / 1024 / 1024 / 1024;
+
+        public NameValueData(string name, NameValueData left, NameValueData right)
+        : this(name, left.FreeBytes + right.FreeBytes, left.TotalBytes + right.TotalBytes)
+        { }
     }
 }

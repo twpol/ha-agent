@@ -11,5 +11,9 @@ namespace HA_Agent.Services
         public float TotalBytesPerSec => ReadBytesPerSec + WriteBytesPerSec;
         public float TotalKiBPerSec => TotalBytesPerSec / 1024;
         public float TotalMiBPerSec => TotalBytesPerSec / 1024 / 1024;
+
+        public NameValueIO(string name, NameValueIO left, NameValueIO right)
+        : this(name, left.ReadBytesPerSec + right.ReadBytesPerSec, left.WriteBytesPerSec + right.WriteBytesPerSec)
+        { }
     }
 }
