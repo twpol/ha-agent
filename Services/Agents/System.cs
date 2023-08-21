@@ -70,6 +70,7 @@ namespace HA_Agent.Agents
                 await PublishSensor("sensor", $"NetworkIO {data.Name} total", icon: "mdi:network", stateClass: "measurement", unitOfMeasurement: "KiB/s", entityCategory: "diagnostic", state: data.TotalKiBPerSec.ToString("F1"));
                 await PublishSensor("sensor", $"NetworkIO {data.Name} received", icon: "mdi:download-network", stateClass: "measurement", unitOfMeasurement: "KiB/s", entityCategory: "diagnostic", state: data.ReadKiBPerSec.ToString("F1"));
                 await PublishSensor("sensor", $"NetworkIO {data.Name} sent", icon: "mdi:upload-network", stateClass: "measurement", unitOfMeasurement: "KiB/s", entityCategory: "diagnostic", state: data.WriteKiBPerSec.ToString("F1"));
+                await PublishSensor("sensor", $"NetworkIO {data.Name} bandwidth", icon: "mdi:network", stateClass: "measurement", unitOfMeasurement: "KiB/s", entityCategory: "diagnostic", state: data.BandwidthKiBPerSec.ToString("F1"));
             }
             if (OperatingSystem.IsWindows() && CPUPerformance != null && CPUUtility != null)
             {
@@ -299,7 +300,7 @@ namespace HA_Agent.Agents
             {
                 foreach (var network in WindowsNetworkIO)
                 {
-                    list.Add(new NameValueIO(network.Key, network.Value.BytesReceivedPerSecond.NextValue(), network.Value.BytesSentPerSecond.NextValue()));
+                    list.Add(new NameValueIO(network.Key, network.Value.BytesReceivedPerSecond.NextValue(), network.Value.BytesSentPerSecond.NextValue(), network.Value.CurrentBandwidth.NextValue()));
                 }
                 list.Add(list.Aggregate(new NameValueIO("", 0, 0), (a, b) => new NameValueIO("", a, b)));
             }
