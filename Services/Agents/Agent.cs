@@ -8,6 +8,9 @@ namespace HA_Agent.Agents
         readonly HomeAssistant HomeAssistant;
         protected readonly string NodeId;
         protected readonly string NodeName;
+        protected int UpdateFrequency { get; init; } = 1;
+
+        int UpdateCounter;
 
         public Agent(HomeAssistant homeAssistant, string nodeId, string nodeName, bool verbose, bool dryRun)
             : base(verbose, dryRun)
@@ -17,9 +20,25 @@ namespace HA_Agent.Agents
             NodeName = nodeName;
         }
 
-        public abstract Task Start();
+        public Task Start()
+        {
+            UpdateCounter = UpdateFrequency;
+            return DoStart();
+        }
 
-        public abstract Task Execute();
+        public Task Execute()
+        {
+            if (++UpdateCounter >= UpdateFrequency)
+            {
+                UpdateCounter = 0;
+                return DoExecute();
+            }
+            return Task.CompletedTask;
+        }
+
+        protected abstract Task DoStart();
+
+        protected abstract Task DoExecute();
 
         protected override string GetName() => $"{GetType().Name}({NodeId})";
 
@@ -63,7 +82,7 @@ namespace HA_Agent.Agents
                 { "device", GetDeviceConfig() },
                 { "unique_id", $"{NodeId}_{safeName}" },
                 { "state_topic", stateTopic },
-                { "expire_after", (int)(HomeAssistant.UpdateIntervalS * 5.5) },
+                { "expire_after", (int)(HomeAssistant.UpdateIntervalS * UpdateFrequency * 5.5) },
             }.Where(kvp => kvp.Value != null).ToDictionary(kvp => kvp.Key, kvp => kvp.Value));
 
             await HomeAssistant.Publish(stateTopic, state);

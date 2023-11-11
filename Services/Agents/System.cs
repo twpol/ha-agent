@@ -26,7 +26,7 @@ namespace HA_Agent.Agents
             UpdateCounterLists();
         }
 
-        public override Task Start()
+        protected override Task DoStart()
         {
             if (OperatingSystem.IsWindows())
             {
@@ -39,7 +39,7 @@ namespace HA_Agent.Agents
             return Task.CompletedTask;
         }
 
-        public override async Task Execute()
+        protected override async Task DoExecute()
         {
             VerboseLog("Execute: Start");
 

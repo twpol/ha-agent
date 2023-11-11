@@ -11,12 +11,12 @@ namespace HA_Agent.Agents
             Log($"Unknown device type: {config["type"]}");
         }
 
-        public override Task Start()
+        protected override Task DoStart()
         {
             return Task.CompletedTask;
         }
 
-        public override Task Execute()
+        protected override Task DoExecute()
         {
             return Task.CompletedTask;
         }
