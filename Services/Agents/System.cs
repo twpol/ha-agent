@@ -16,13 +16,56 @@ namespace HA_Agent.Agents
         readonly Dictionary<string, WindowsDiskIO>? WindowsDiskIO;
         readonly Dictionary<string, WindowsNetworkIO>? WindowsNetworkIO;
 
+        readonly ulong InstalledMemory;
+        readonly ulong UsableMemory;
+        readonly PerformanceCounter? WindowsMemoryKernelNonPagedPool;
+        readonly PerformanceCounter? WindowsMemoryKernelPagedPool;
+        readonly PerformanceCounter? WindowsMemoryKernelDrivers;
+        readonly PerformanceCounter? WindowsMemoryKernelCode;
+        readonly PerformanceCounter? WindowsMemoryFileCache;
+        readonly PerformanceCounter? WindowsMemoryPrivateWorkingSet;
+        readonly PerformanceCounter? WindowsMemoryModified;
+        readonly PerformanceCounter? WindowsMemoryStandbyCore;
+        readonly PerformanceCounter? WindowsMemoryStandbyNormal;
+        readonly PerformanceCounter? WindowsMemoryStandbyReserve;
+        readonly PerformanceCounter? WindowsMemoryFree;
+
         public System(HomeAssistant homeAssistant, IConfigurationSection config, bool verbose, bool dryRun)
             : base(homeAssistant, Environment.MachineName, config["name"] ?? Environment.MachineName, verbose, dryRun)
         {
-            CPUPerformance = OperatingSystem.IsWindows() ? new PerformanceCounter("Processor Information", "% Processor Performance", "_Total") : null;
-            CPUUtility = OperatingSystem.IsWindows() ? new PerformanceCounter("Processor Information", "% Processor Utility", "_Total") : null;
-            WindowsDiskIO = OperatingSystem.IsWindows() ? new() : null;
-            WindowsNetworkIO = OperatingSystem.IsWindows() ? new() : null;
+            if (OperatingSystem.IsWindows())
+            {
+                CPUPerformance = new PerformanceCounter("Processor Information", "% Processor Performance", "_Total");
+                CPUUtility = new PerformanceCounter("Processor Information", "% Processor Utility", "_Total");
+                WindowsDiskIO = new();
+                WindowsNetworkIO = new();
+                var ph = new ManagementClass("Win32_PhysicalMemory");
+                foreach (var mo in ph.GetInstances())
+                {
+                    InstalledMemory += (ulong)mo.Properties["Capacity"].Value;
+                }
+                var cs = new ManagementClass("Win32_ComputerSystem");
+                foreach (var mo in cs.GetInstances())
+                {
+                    UsableMemory = (ulong)mo.Properties["TotalPhysicalMemory"].Value;
+                }
+                var os = new ManagementClass("Win32_OperatingSystem");
+                foreach (var mo in os.GetInstances())
+                {
+                    UsableMemory = (ulong)mo.Properties["TotalVisibleMemorySize"].Value * 1024;
+                }
+                WindowsMemoryKernelNonPagedPool = new PerformanceCounter("Memory", "Pool Nonpaged Bytes");
+                WindowsMemoryKernelPagedPool = new PerformanceCounter("Memory", "Pool Paged Resident Bytes");
+                WindowsMemoryKernelDrivers = new PerformanceCounter("Memory", "System Driver Resident Bytes");
+                WindowsMemoryKernelCode = new PerformanceCounter("Memory", "System Code Resident Bytes");
+                WindowsMemoryFileCache = new PerformanceCounter("Memory", "System Cache Resident Bytes");
+                WindowsMemoryPrivateWorkingSet = new PerformanceCounter("Process", "Working Set - Private", "_Total");
+                WindowsMemoryModified = new PerformanceCounter("Memory", "Modified Page List Bytes");
+                WindowsMemoryStandbyCore = new PerformanceCounter("Memory", "Standby Cache Core Bytes");
+                WindowsMemoryStandbyNormal = new PerformanceCounter("Memory", "Standby Cache Normal Priority Bytes");
+                WindowsMemoryStandbyReserve = new PerformanceCounter("Memory", "Standby Cache Reserve Bytes");
+                WindowsMemoryFree = new PerformanceCounter("Memory", "Free & Zero Page List Bytes");
+            }
             UpdateCounterLists();
         }
 
@@ -83,6 +126,27 @@ namespace HA_Agent.Agents
                     await PublishSensor("sensor", "Processor utility", icon: icon, stateClass: "measurement", unitOfMeasurement: "%", entityCategory: "diagnostic", state: utility.ToString("F1"));
                     await PublishSensor("sensor", "Processor use", icon: icon, stateClass: "measurement", unitOfMeasurement: "%", entityCategory: "diagnostic", state: (100 * utility / performance).ToString("F1"));
                 }
+            }
+
+            if (OperatingSystem.IsWindows() && WindowsMemoryKernelNonPagedPool != null && WindowsMemoryKernelPagedPool != null && WindowsMemoryKernelDrivers != null && WindowsMemoryKernelCode != null && WindowsMemoryFileCache != null && WindowsMemoryPrivateWorkingSet != null && WindowsMemoryModified != null && WindowsMemoryStandbyCore != null && WindowsMemoryStandbyNormal != null && WindowsMemoryStandbyReserve != null && WindowsMemoryFree != null)
+            {
+                var hardware = (float)(InstalledMemory - UsableMemory);
+                // NOTE: Kernel driver resident bytes is negative on Windows 10 22H2 sometimes (looks like the number of pages resident wraps around giving huge byte values)
+                var kernel = WindowsMemoryKernelNonPagedPool.NextValue() + WindowsMemoryKernelPagedPool.NextValue() + FixWrappedRawPageBytes(WindowsMemoryKernelDrivers.NextValue()) + WindowsMemoryKernelCode.NextValue();
+                var cache = WindowsMemoryFileCache.NextValue();
+                var application = WindowsMemoryPrivateWorkingSet.NextValue();
+                var modified = WindowsMemoryModified.NextValue();
+                var standby = WindowsMemoryStandbyCore.NextValue() + WindowsMemoryStandbyNormal.NextValue() + WindowsMemoryStandbyReserve.NextValue();
+                var free = WindowsMemoryFree?.NextValue() ?? 0;
+                var shared = UsableMemory - kernel - cache - application - modified - standby - free;
+                await PublishSensor("sensor", "Memory hardware type", icon: "mdi:memory", stateClass: "measurement", unitOfMeasurement: "MiB", entityCategory: "diagnostic", state: (hardware / 1024 / 1024).ToString("F1"));
+                await PublishSensor("sensor", "Memory kernel type", icon: "mdi:memory", stateClass: "measurement", unitOfMeasurement: "MiB", entityCategory: "diagnostic", state: (kernel / 1024 / 1024).ToString("F1"));
+                await PublishSensor("sensor", "Memory cache type", icon: "mdi:memory", stateClass: "measurement", unitOfMeasurement: "MiB", entityCategory: "diagnostic", state: (cache / 1024 / 1024).ToString("F1"));
+                await PublishSensor("sensor", "Memory shared type", icon: "mdi:memory", stateClass: "measurement", unitOfMeasurement: "MiB", entityCategory: "diagnostic", state: (shared / 1024 / 1024).ToString("F1"));
+                await PublishSensor("sensor", "Memory application type", icon: "mdi:memory", stateClass: "measurement", unitOfMeasurement: "MiB", entityCategory: "diagnostic", state: (application / 1024 / 1024).ToString("F1"));
+                await PublishSensor("sensor", "Memory modified type", icon: "mdi:memory", stateClass: "measurement", unitOfMeasurement: "MiB", entityCategory: "diagnostic", state: (modified / 1024 / 1024).ToString("F1"));
+                await PublishSensor("sensor", "Memory standby type", icon: "mdi:memory", stateClass: "measurement", unitOfMeasurement: "MiB", entityCategory: "diagnostic", state: (standby / 1024 / 1024).ToString("F1"));
+                await PublishSensor("sensor", "Memory free type", icon: "mdi:memory", stateClass: "measurement", unitOfMeasurement: "MiB", entityCategory: "diagnostic", state: (free / 1024 / 1024).ToString("F1"));
             }
 
             await PublishSensor("sensor", $"Ping Internal", icon: "mdi:lan", stateClass: "measurement", unitOfMeasurement: "ms", entityCategory: "diagnostic", state: GetPing(GetInternalIPs())?.ToString("F1"));
@@ -324,6 +388,11 @@ namespace HA_Agent.Agents
                 }
             }
             return pings.Count > 0 ? pings.Average() : null;
+        }
+
+        static float FixWrappedRawPageBytes(float value)
+        {
+            return value > 0x40000000000 ? 0 : value;
         }
     }
 }
