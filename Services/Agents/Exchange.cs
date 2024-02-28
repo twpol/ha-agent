@@ -61,17 +61,5 @@ namespace HA_Agent.Agents
 
             VerboseLog("Execute: Finish");
         }
-
-        IDictionary<string, object>? DeviceConfig;
-
-        protected override IDictionary<string, object> GetDeviceConfig()
-        {
-            DeviceConfig ??= new Dictionary<string, object>
-            {
-                { "identifiers", $"ha-agent.{NodeId}" },
-                { "name", NodeName },
-            };
-            return DeviceConfig;
-        }
     }
 }

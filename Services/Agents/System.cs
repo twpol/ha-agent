@@ -249,18 +249,13 @@ namespace HA_Agent.Agents
             };
         }
 
-        IDictionary<string, object>? DeviceConfig;
-
-        protected override IDictionary<string, object> GetDeviceConfig()
+        protected override IDictionary<string, object> GetCustomDeviceConfig()
         {
-            DeviceConfig ??= new Dictionary<string, object>
+            return new Dictionary<string, object>
             {
-                { "identifiers", $"ha-agent.{NodeId}" },
                 { "manufacturer", GetDeviceManufacturer() },
                 { "model", GetDeviceModel() },
-                { "name", NodeName },
             };
-            return DeviceConfig;
         }
 
         static string GetDeviceManufacturer()
