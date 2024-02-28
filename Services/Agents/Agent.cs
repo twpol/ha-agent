@@ -23,7 +23,19 @@ namespace HA_Agent.Agents
 
         protected override string GetName() => $"{GetType().Name}({NodeId})";
 
-        protected abstract IDictionary<string, object> GetDeviceConfig();
+        IDictionary<string, object>? DeviceConfig;
+        protected virtual IDictionary<string, object> GetCustomDeviceConfig() => new Dictionary<string, object>();
+        IDictionary<string, object> GetDeviceConfig()
+        {
+            if (DeviceConfig == null)
+            {
+                DeviceConfig = GetCustomDeviceConfig();
+                DeviceConfig["identifiers"] = $"ha-agent.{NodeId}";
+                DeviceConfig["name"] = NodeName;
+            }
+            return DeviceConfig;
+        }
+
 
         readonly static Regex NormaliseSpaceRegex = new(" +", RegexOptions.Compiled);
 
@@ -58,7 +70,7 @@ namespace HA_Agent.Agents
                 { "unit_of_measurement", unitOfMeasurement },
                 { "device_class", deviceClass },
                 { "icon", icon },
-                { "name", $"{NodeName} {name}" },
+                { "name", name },
                 { "entity_category", entityCategory },
                 { "device", GetDeviceConfig() },
                 { "unique_id", $"{NodeId}_{safeName}" },

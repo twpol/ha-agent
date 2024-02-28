@@ -20,10 +20,5 @@ namespace HA_Agent.Agents
         {
             return Task.CompletedTask;
         }
-
-        protected override IDictionary<string, object> GetDeviceConfig()
-        {
-            return new Dictionary<string, object>();
-        }
     }
 }
