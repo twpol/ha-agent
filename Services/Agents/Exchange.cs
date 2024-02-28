@@ -17,20 +17,21 @@ namespace HA_Agent.Agents
             : base(homeAssistant, config["email"] ?? "(unnamed)", config["name"] ?? config["email"] ?? "(unnamed)", verbose, dryRun)
         {
             Config = config;
+            UpdateFrequency = 5;
             Service = new ExchangeService(ExchangeVersion.Exchange2016)
             {
                 Credentials = new WebCredentials(Config["username"], Config["password"])
             };
         }
 
-        public override Task Start()
+        protected override Task DoStart()
         {
             Service.AutodiscoverUrl(Config["email"], redirectionUri => new Uri(redirectionUri).Scheme == "https");
             VerboseLog($"Connected to {Service.Url}");
             return Task.CompletedTask;
         }
 
-        public override async Task Execute()
+        protected override async Task DoExecute()
         {
             if (NextSyncTime > DateTimeOffset.Now)
             {
