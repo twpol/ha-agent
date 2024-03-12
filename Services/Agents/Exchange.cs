@@ -59,6 +59,10 @@ namespace HA_Agent.Agents
                 Log($"Server busy; wait {error.BackOffMilliseconds} ms");
                 NextSyncTime = DateTimeOffset.Now.AddMilliseconds(error.BackOffMilliseconds);
             }
+            catch (ServiceRemoteException error)
+            {
+                Log(error.ToString());
+            }
 
             VerboseLog("Execute: Finish");
         }
