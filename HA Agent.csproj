@@ -14,7 +14,7 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.3" />
     <PackageReference Include="MQTTnet" Version="4.3.7.1207" />
     <PackageReference Include="System.CommandLine.DragonFruit" Version="0.4.0-alpha.25306.1" />
-    <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="10.0.2" />
+    <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="10.0.3" />
     <PackageReference Include="System.Management" Version="10.0.3" />
   </ItemGroup>
 
